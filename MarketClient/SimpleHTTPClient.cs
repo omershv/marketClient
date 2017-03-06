@@ -20,9 +20,10 @@ namespace MarketClient
         /// <param name="token">token for authentication data</param>
         /// <param name="item">the data item to send in the reuqest</param>
         /// <returns>the server response parsed as T2 object in json format</returns>
-        public T2 SendPostRequest<T1,T2>(string url, string user, string token, T1 item)
+        public T2 SendPostRequest<T1,T2>(string url, string user, string token, T1 item) where T2 : class 
         {
-            return FromJson<T2>(SendPostRequest(url,user,token,item));
+            var response = SendPostRequest(url, user, token, item);
+            return response == null ? null : FromJson<T2>(response);
         }
 
         /// <summary>
@@ -43,16 +44,20 @@ namespace MarketClient
             JObject jsonItem = JObject.FromObject(item);
             jsonItem.Add("auth", JObject.FromObject(auth));
             StringContent content = new StringContent(jsonItem.ToString());
-            using (HttpClient client = new HttpClient())
+            using (var client = new HttpClient())
             {
                 var result = client.PostAsync(url, content).Result;
-                var responseContent = result.Content.ReadAsStringAsync().Result;
+                var responseContent = result?.Content?.ReadAsStringAsync().Result;
                 return responseContent;
             }
         }
 
-        private static T FromJson<T>(string response)
+        private static T FromJson<T>(string response) where T : class 
         {
+            if (response == null)
+            {
+                return null;
+            }
             try
             {
                 return JsonConvert.DeserializeObject<T>(response, new JsonSerializerSettings
